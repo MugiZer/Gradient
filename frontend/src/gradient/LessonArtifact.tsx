@@ -1,0 +1,3 @@
+export default function LessonArtifact({ title, train, unseen, start, pending, details }: { title: string; train?: number; unseen?: number; start: () => void; pending: boolean; details: () => void }) {
+  return <section aria-label="Lesson ready"><p className="eyebrow">✦ Lesson ready</p><h2>{title}</h2>{train !== undefined && unseen !== undefined && <p className="muted">{train} train · {unseen} unseen</p>}<button className="primary" onClick={start} disabled={pending}>{pending ? 'Starting…' : 'Post-train agent'}</button><button className="text-button details-link" onClick={details}>View details →</button></section>;
+}

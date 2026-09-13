@@ -1,0 +1,3 @@
+export default function TrainingProgress({ progress, run, details, reference = false }: { progress?: number; run?: string; details: () => void; reference?: boolean }) {
+  return <section aria-label="Post-training"><h2>{reference ? 'Training step' : 'Post-training Qwen 2B'}</h2>{reference ? <p>Continue to reference results.</p> : <progress aria-label="Post-training progress" max={1} value={progress} />}{run && <p className="muted"><a href={`https://app.primeintellect.ai/dashboard/training/${encodeURIComponent(run)}`} target="_blank" rel="noreferrer">Open Prime Intellect ↗</a></p>}<button className="text-button" onClick={details}>View details →</button></section>;
+}

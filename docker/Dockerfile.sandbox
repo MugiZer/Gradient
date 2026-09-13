@@ -1,0 +1,6 @@
+FROM python:3.11-slim
+COPY gradient/sandbox/supervisor.py /private/supervisor.py
+RUN chmod 700 /private && chmod 600 /private/supervisor.py
+WORKDIR /work
+ENTRYPOINT ["python", "-I", "/private/supervisor.py"]
+

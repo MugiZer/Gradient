@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Gradient fixed-eight proof",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source",
+    "claim",
+    "pre",
+    "post",
+    "tasks",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "source": {
+      "enum": [
+        "fallback",
+        "real"
+      ]
+    },
+    "claim": {
+      "type": "string"
+    },
+    "pre": {
+      "type": "object",
+      "required": [
+        "model_id",
+        "adapter_id",
+        "score"
+      ],
+      "properties": {
+        "model_id": {
+          "type": "string"
+        },
+        "model_revision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "adapter_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "score": {
+          "type": "object",
+          "required": [
+            "passed",
+            "total"
+          ],
+          "properties": {
+            "passed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "type": "object",
+      "required": [
+        "model_id",
+        "adapter_id",
+        "score"
+      ],
+      "properties": {
+        "model_id": {
+          "type": "string"
+        },
+        "model_revision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "adapter_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "score": {
+          "type": "object",
+          "required": [
+            "passed",
+            "total"
+          ],
+          "properties": {
+            "passed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "pre_reward",
+          "post_reward",
+          "pre_artifact",
+          "post_artifact"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "pre_reward": {
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "post_reward": {
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "pre_artifact": {
+            "type": "string"
+          },
+          "post_artifact": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object"
+    }
+  }
+}

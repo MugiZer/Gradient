@@ -21,6 +21,14 @@ coverage.xml
 .coverage
 htmlcov/
 logs/
+runs/
+worker-workspace/
+.codex-schema/
+.playwright-cli/
+output/playwright/
+node_modules/
+test-results/
+playwright-report/
 
 # Operating-system files
 .DS_Store
