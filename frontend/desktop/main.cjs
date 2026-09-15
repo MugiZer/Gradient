@@ -15,6 +15,21 @@ let desktopUrl;
 let mode = 'live';
 let hiddenByUser = false;
 let visibilityTimer;
+// Demo takeover: sprite click types the staged lines into the window under the companion.
+let takeover = false;
+let takeoverAbort = false;
+let takeoverPs = null;
+// Timeline (tune for the room; tightened in editing): MSG1 at t=0, exhibit at
+// t=MSG2_DELAY-HTML_LEAD, MSG2 (correction) at t=MSG2_DELAY, then Lesson found pops.
+const DEMO_MSG2_DELAY_MS = 60000;
+const DEMO_HTML_LEAD_MS = 10000;
+const DEMO_MSG1 = 'in snapshot.py implement publish_snapshot(path, data) so a separate process can read it after';
+const DEMO_MSG2 = 'That only returns a description. Persist the data so a fresh reader observes it. If I ask for a preview, leave the file unchanged.';
+// Keep byte-identical with frontend/output/playwright/demo-takeover.ps1 ($MSG1/$MSG2).
+// The exhibit pops between the two prompts so it sits in the demo before the correction.
+// Codex opens it from its reply link in its side browser (never the system browser);
+// this hold is the presenter's window to click that link.
+const DEMO_HTML_HOLD_MS = 15000;
 app.setName('Gradient');
 app.setPath('userData', join(app.getPath('appData'), 'Gradient'));
 
@@ -37,7 +52,7 @@ function position() {
 }
 
 function keepVisible() {
-  if (!win || win.isDestroyed() || hiddenByUser || quitting) return;
+  if (!win || win.isDestroyed() || hiddenByUser || quitting || takeover) return;
   if (win.isFullScreen()) win.setFullScreen(false);
   if (win.isMinimized() || win.isMaximized()) win.restore();
   position();
@@ -59,7 +74,8 @@ function hideGradient() {
 function controls() {
   return Menu.buildFromTemplate([
     { label: 'Teach lesson', click: () => { showGradient(); win.webContents.send('gradient:teach'); } },
-    ...[['live', 'Live lesson'], ['experiment', 'Training'], ['fallback', 'Saved lesson']].map(([value, label]) => ({ label, type: 'radio', checked: mode === value, click: () => selectMode(value) })),
+    { label: 'Reset demo', click: () => { showGradient(); win.webContents.send('gradient:demo-reset'); } },
+    ...[['live', 'Live'], ['demo', 'Demo']].map(([value, label]) => ({ label, type: 'radio', checked: mode === value, click: () => selectMode(value) })),
     { type: 'separator' },
     { label: 'Show Gradient', click: showGradient },
     { label: 'Hide Gradient', click: hideGradient },
@@ -69,7 +85,7 @@ function controls() {
 }
 
 function selectMode(value) {
-  if (!['live', 'experiment', 'fallback'].includes(value)) return;
+  if (!['live', 'demo'].includes(value)) return;
   mode = value;
   showGradient();
   win.webContents.send('gradient:mode', mode);
@@ -111,7 +127,10 @@ async function start() {
     webPreferences: { preload: join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true },
   });
   position();
-  win.on('hide', () => { if (!hiddenByUser) setImmediate(keepVisible); });
+  win.on('hide', () => { if (!hiddenByUser && !takeover) setImmediate(keepVisible); });
+  // Renderer close buttons only collapse surfaces; an OS-level close must never kill the companion.
+  win.on('close', (event) => { if (!quitting) { event.preventDefault(); showGradient(); } });
+  win.on('unresponsive', () => { if (!quitting) win.webContents.reload(); });
   win.on('minimize', () => setImmediate(keepVisible));
   win.on('always-on-top-changed', (_event, top) => { if (!top) setImmediate(keepVisible); });
   win.on('closed', () => clearInterval(visibilityTimer));
@@ -130,6 +149,7 @@ async function start() {
   win.webContents.on('will-navigate', (event, url) => { if (url !== desktopUrl) event.preventDefault(); });
   const valid = (event) => event.sender === win.webContents && event.senderFrame === win.webContents.mainFrame;
   ipcMain.handle('gradient:demo', (event) => { if (valid(event)) return readDemo(repo); throw new Error('Invalid sender'); });
+  ipcMain.handle('gradient:mode:get', (event) => { if (valid(event)) return mode; throw new Error('Invalid sender'); });
   ipcMain.on('gradient:mode', (event, value) => { if (valid(event)) selectMode(value); });
   ipcMain.on('gradient:visibility', (event, visible) => { if (valid(event)) visible === false ? hideGradient() : showGradient(); });
   ipcMain.on('gradient:pointer', (event, value) => {
@@ -143,6 +163,60 @@ async function start() {
     position();
   });
   ipcMain.on('gradient:menu', (event) => { if (valid(event)) controls().popup({ window: win }); });
+  ipcMain.on('gradient:demo-type', () => {
+    if (takeover || !win || win.isDestroyed()) return;
+    takeover = true;
+    takeoverAbort = false;
+    const aborted = () => takeoverAbort;
+    const type = (text) => new Promise((done, failed) => {
+      const script = `Add-Type -AssemblyName System.Windows.Forms;`
+        + `$t='${text.replace(/'/g, "''")}';`
+        + `foreach($ch in $t.ToCharArray()){$k=[string]$ch;`
+        + `if($k -match '[\\+\\^%~\\(\\)\\[\\]\\{\\}]'){$k='{'+$k+'}'}`
+        + `[System.Windows.Forms.SendKeys]::SendWait($k);Start-Sleep -Milliseconds 12}`;
+      const ps = spawn('powershell.exe', ['-NoProfile', '-Command', script], { windowsHide: true });
+      takeoverPs = ps;
+      ps.on('error', failed);
+      ps.on('close', (code) => { takeoverPs = null; (code === 0 && !takeoverAbort ? done() : failed(new Error(`SendKeys exited ${code}`))); });
+    });
+    (async () => {
+      try {
+        win.hide(); // focus falls back to the window under the companion (the Codex box)
+        await delay(600);
+        if (aborted()) return;
+        await type(DEMO_MSG1);
+        takeoverPs = spawn('powershell.exe', ['-NoProfile', '-Command',
+          `Add-Type -AssemblyName System.Windows.Forms;[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')`], { windowsHide: true });
+        await new Promise((done, failed) => {
+          takeoverPs.on('error', failed);
+          takeoverPs.on('close', (code) => { takeoverPs = null; (code === 0 && !takeoverAbort ? done() : failed(new Error(`SendKeys exited ${code}`))); });
+        });
+        if (aborted()) return;
+        win.showInactive(); // visible again without stealing focus
+        await delay(Math.max(0, DEMO_MSG2_DELAY_MS - DEMO_HTML_HOLD_MS));
+        if (aborted()) return;
+        await delay(DEMO_HTML_HOLD_MS); // presenter opens the exhibit from the Codex reply link
+        if (aborted()) return;
+        await type(DEMO_MSG2);
+        takeoverPs = spawn('powershell.exe', ['-NoProfile', '-Command',
+          `Add-Type -AssemblyName System.Windows.Forms;[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')`], { windowsHide: true });
+        await new Promise((done, failed) => {
+          takeoverPs.on('error', failed);
+          takeoverPs.on('close', (code) => { takeoverPs = null; (code === 0 && !takeoverAbort ? done() : failed(new Error(`SendKeys exited ${code}`))); });
+        });
+        if (aborted()) return;
+        await delay(10000); // let the correction settle before Lesson found pops
+        if (aborted() || win.isDestroyed()) return;
+        win.webContents.send('gradient:teach'); // Lesson found pops after the second prompt
+      } catch (error) { if (!takeoverAbort) console.error(`Demo takeover failed: ${String(error)}`); }
+      finally { takeover = false; takeoverAbort = false; takeoverPs = null; showGradient(); }
+    })();
+  });
+  ipcMain.on('gradient:demo-abort', () => {
+    if (!takeover) return;
+    takeoverAbort = true;
+    try { takeoverPs?.kill(); } catch { /* already exited */ }
+  });
   screen.on('display-metrics-changed', position);
   screen.on('display-removed', position);
   desktopUrl = (await serveDesktop(repo, endpoint)).url;

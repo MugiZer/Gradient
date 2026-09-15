@@ -9,15 +9,9 @@ html.desktop, .desktop body, .desktop #root { background: transparent; min-heigh
 .native-connection p { font-size: 12px; overflow-wrap: anywhere; }
 .manual-observation { font-size: 13px; }
 .manual-observation p { margin: 0; }
-.demo-controls { position: fixed; top: 58px; right: 20px; z-index: 15; padding: 8px 12px; font-size: 11px; max-height: 130px; overflow: auto; }
-.demo-controls p { margin: 0 0 6px; }
-.mode-controls { position: fixed; top: 12px; right: 20px; z-index: 15; padding: 4px 12px; }
-.mode-controls select { width: 100%; padding: 6px 0; color: var(--text-1); background: var(--surface-1); border: 0; font: inherit; }
-.desktop .mode-controls { width: auto; min-width: 150px; padding: 4px 12px; }
-.desktop .mode-controls { display: flex; align-items: center; gap: var(--space-2); }
-.desktop .mode-controls select { min-width: 0; }
-.desktop .mode-controls .text-button { flex: none; min-height: 28px; }
-.desktop .demo-controls { padding: 8px 12px; }
+.demo-footer { display: grid; gap: 8px; justify-items: start; font-size: 12px; border-top: 1px solid var(--border); padding-top: var(--space-3); margin-top: var(--space-3); }
+.demo-footer p { margin: 0; }
+.demo-switch { display: flex; gap: 12px; margin-bottom: 6px; }
 .lesson-context { display: grid; gap: var(--space-2); margin-top: var(--space-3); }
 .lesson-context section { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-3); }
 .lesson-context h3 { color: var(--accent); font-size: 11px; font-weight: 500; margin: 0 0 var(--space-2); }

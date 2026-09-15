@@ -1219,3 +1219,69 @@ Canonical design instruction:
 
 
 This is the implementation rule most likely to preserve the ambient product feel.
+
+
+85. DEMO-HARDENED DECISIONS — LOCKED
+
+
+These survived live demo rehearsal and persist into the real product.
+They constrain both the live backend-driven flow and any demo overlay.
+
+
+A. Sprite-anchored next step
+
+
+During multi-beat work, the sprite object itself carries the single next
+action (GradientLayer `nextBeat`: one pill beside the anchor, e.g.
+Continue →). Canonical panels keep their primary buttons (Teach lesson,
+Post-train agent, Run proof). No separate static control cards outside
+the sprite-anchored surfaces. Demo steppers and future live “pending
+action” affordances share this slot; the slot never duplicates a
+canonical panel button for the same stage.
+
+
+B. Single home per disclosure
+
+
+Each progressive-disclosure surface owns its content exclusively:
+
+
+• RL environments → Environment Builder peek only, as a curriculum
+  explorer: compact summary (capability, train required/forbidden and
+  held-out counts, coverage, hard quality gates — never one averaged
+  score), then Explore into family groups organized by task family and
+  boundary side (effect-required beside effect-forbidden so the pair
+  teaches the decision boundary), then per-environment Inspect walking
+  the real loop (initial state → policy → resulting state → verifier →
+  reward) plus calibration and training value where recorded.
+  Function names stay metadata. Held-out environments are first-class
+  frozen objects with freeze metadata and zero training rollouts.
+• Observer learning objective, training run, provenance → Technical details.
+• Training Evidence content → ProofDrawer (Run proof opens it whenever
+  recorded evidence exists; hand-authored reference comparison is the
+  fallback only).
+
+
+Never render the same artifact list in two surfaces at once.
+
+
+C. Mode ownership
+
+
+The desktop shell (main process) owns the live/demo mode. The renderer
+pulls it on mount and subscribes to changes; a renderer reload must
+restore the persisted mode, never silently drop to live. The tray menu
+is the only mode switch. No in-surface mode toggles (no ← Live style
+buttons inside lesson surfaces).
+
+
+D. Anchor extensibility without leakage
+
+
+GradientAnchor exposes an `onAnchor` veto hook so ambient triggers
+(demo takeover, future presence reactions) can observe or preempt the
+sprite click without touching shared layout code. Demo-only transport
+(demo-type/abort IPC, SendKeys takeover, staged fixtures) stays in the
+desktop shell and demo companion. Shared components (`GradientLayer`,
+`AgentSprite`, `AgentPeek`, `ProofDrawer`, `TechnicalDetails`) must
+remain drivable by real backend events with no demo imports.

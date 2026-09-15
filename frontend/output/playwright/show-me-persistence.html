@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ObservablePersistence — Lesson Architecture</title>
+<style>
+  :root {
+    --bg: #0d0d0d; --surface-1: #151515; --surface-2: #1b1b1b;
+    --text-1: #f4f4f4; --text-2: #a6a6a6; --text-3: #707070;
+    --border: rgba(255,255,255,.09); --accent: #7ee2a8; --failure: #e27e7e; --warn: #e2c87e;
+    --radius: 12px; --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text-1);
+    font: 14px/1.55 -apple-system, "Segoe UI", sans-serif; padding: 32px 20px 64px; }
+  .sheet { max-width: 960px; margin: 0 auto; }
+  .eyebrow { color: var(--text-2); font-size: 12px; letter-spacing: .06em; margin: 0; }
+  h1 { font-size: 26px; letter-spacing: -.02em; margin: 6px 0 4px; }
+  .lede { color: var(--text-2); margin: 0 0 28px; max-width: 70ch; }
+  .lede strong { color: var(--text-1); }
+  section.card { background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 22px; margin: 0 0 18px; }
+  section.card > h2 { font-size: 12px; letter-spacing: .06em; color: var(--text-2);
+    margin: 0 0 14px; font-weight: 500; }
+  /* flow diagram */
+  .flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: stretch; }
+  .node { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; }
+  .node h3 { margin: 0 0 4px; font-size: 13px; }
+  .node p, .node li { color: var(--text-2); font-size: 12px; margin: 0; }
+  .node ul { margin: 6px 0 0; padding-left: 18px; }
+  .node code, td code, .diff code { font-family: var(--mono); font-size: 12px; }
+  .node.entry { border-color: var(--warn); }
+  .node.bad { border-color: var(--failure); }
+  .node.good { border-color: var(--accent); }
+  .arrow { align-self: center; color: var(--text-3); font-family: var(--mono); text-align: center; }
+  .arrow small { display: block; color: var(--text-2); font-size: 11px; font-family: inherit; }
+  .span { grid-column: 1 / -1; }
+  /* diff */
+  pre.diff { font-family: var(--mono); font-size: 12.5px; line-height: 1.6; margin: 0;
+    white-space: pre-wrap; overflow-wrap: anywhere; }
+  pre.diff .del { color: var(--failure); }
+  pre.diff .add { color: var(--accent); }
+  pre.diff .ctx { color: var(--text-3); }
+  /* matrix */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 9px 10px; border-top: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text-2); font-weight: 500; border-top: 0; }
+  td .pass { color: var(--accent); font-family: var(--mono); }
+  td .fail { color: var(--failure); font-family: var(--mono); }
+  td .muted { color: var(--text-2); }
+  /* test strip */
+  .tests { font-family: var(--mono); font-size: 12.5px; }
+  .tests .pass { color: var(--accent); }
+  .tests li { margin: 3px 0; list-style: none; }
+  .tests ul { margin: 0; padding: 0; }
+  .foot { color: var(--text-3); font-size: 11.5px; margin-top: 22px; }
+  @media (max-width: 640px) {
+    body { padding: 20px 12px 48px; }
+    h1 { font-size: 21px; }
+    .flow { grid-template-columns: 1fr; }
+    .arrow { transform: rotate(90deg); justify-self: center; }
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <p class="eyebrow">✦ LESSON ARCHITECTURE · GRADIENT</p>
+  <h1>ObservablePersistence</h1>
+  <p class="lede"><strong>Distinguish actual persistence from descriptions and previews.</strong>
+    When persistence is requested, perform the write and ensure the result is observable by an
+    independent reader. Never substitute returned metadata for a required write — and never
+    modify existing files when only a preview is requested.</p>
+
+  <section class="card">
+    <h2>1 · REQUEST FLOW</h2>
+    <div class="flow">
+      <div class="node entry span">
+        <h3>Caller → <code>publish_snapshot(path, data, preview=False)</code></h3>
+        <p>Return contract: <code>{"path": path, "data": data}</code> — returned <em>after</em> the persistence work, never instead of it.</p>
+      </div>
+      <div class="node bad">
+        <h3>✕ Before: description as result</h3>
+        <p><code>return {"path": path, "data": data}</code> with no write. A fresh reader observes nothing. Verifier: FAIL.</p>
+      </div>
+      <div class="arrow">vs<small>correction</small></div>
+      <div class="node good">
+        <h3>✓ After: routed by intent</h3>
+        <ul>
+          <li><code>preview=True</code> → return description, filesystem untouched</li>
+          <li><code>preview=False</code> → boundary checks → real write → fresh-reader verify → return</li>
+        </ul>
+      </div>
+      <div class="node span">
+        <h3>Independent reader (separate process)</h3>
+        <p>Opens <code>path</code> after return, asserts exact UTF-8 bytes. The only accepted evidence of persistence.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2 · WHAT CHANGED</h2>
+    <pre class="diff"><span class="ctx">def publish_snapshot(path, data, *, preview=False):</span>
+<span class="del">-    return {"path": path, "data": data}</span>
+<span class="add">+    if not preview:</span>
+<span class="add">+        # boundary: stale content, empty text, unicode, mixed newlines</span>
+<span class="add">+        with open(path, "w", encoding="utf-8", newline="") as snapshot:</span>
+<span class="add">+            snapshot.write(data)</span>
+<span class="add">+        # verify with a fresh read before reporting success</span>
+<span class="add">+    return {"path": path, "data": data}</span></pre>
+  </section>
+
+  <section class="card">
+    <h2>3 · BEHAVIOR MATRIX (FROZEN CURRICULUM · 8 TRAIN + 4 UNSEEN)</h2>
+    <table>
+      <tr><th>Request</th><th>Before</th><th>After</th></tr>
+      <tr>
+        <td><code>save_payload</code> <span class="muted">· execute</span></td>
+        <td><span class="fail">× FAIL</span> <span class="muted">— description only, reader sees nothing</span></td>
+        <td><span class="pass">✓ PASS</span> <span class="muted">— bytes on disk, fresh read matches</span></td>
+      </tr>
+      <tr>
+        <td><code>preview_save</code> <span class="muted">· simulate</span></td>
+        <td><span class="fail">× FAIL</span> <span class="muted">— wrote / truncated the target</span></td>
+        <td><span class="pass">✓ PASS</span> <span class="muted">— file byte-for-byte unchanged</span></td>
+      </tr>
+      <tr>
+        <td><code>persist_json_update</code> <span class="muted">· execute</span></td>
+        <td><span class="fail">× FAIL</span> <span class="muted">— in-memory object only</span></td>
+        <td><span class="pass">✓ PASS</span> <span class="muted">— reopened and re-parsed from disk</span></td>
+      </tr>
+      <tr>
+        <td><code>preview_json_update</code> <span class="muted">· simulate</span></td>
+        <td><span class="fail">× FAIL</span> <span class="muted">— reformatted copy saved over original</span></td>
+        <td><span class="pass">✓ PASS</span> <span class="muted">— whitespace + key order preserved</span></td>
+      </tr>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>4 · VERIFICATION — MOCKED PATHS, REAL ASSERTIONS</h2>
+    <div class="tests">
+      <ul>
+        <li><span class="pass">PASS</span> fresh-process exact UTF-8 reads (unicode, mixed newlines)</li>
+        <li><span class="pass">PASS</span> overwrite replaces stale content fully, no leftovers</li>
+        <li><span class="pass">PASS</span> empty text persists as empty file</li>
+        <li><span class="pass">PASS</span> preview leaves existing file untouched</li>
+      </ul>
+      <p style="color:var(--text-3)">Tests run against fake tmp paths — the real tree is never touched.</p>
+    </div>
+  </section>
+
+  <p class="foot">Reference solution · hand-authored and verified separately from model training · Same model · Same task · Same verifier · Different weights</p>
+</div>
+</body>
+</html>

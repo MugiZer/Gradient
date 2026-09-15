@@ -1,4 +1,4 @@
-import { useEffect, useRef, type Dispatch, type ReactNode } from 'react';
+import { useEffect, useRef, type Dispatch, type MouseEvent, type ReactNode } from 'react';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import type { Action, GradientModel } from '../state/gradientMachine';
 import { springSoft } from '../motion/springs';
@@ -11,11 +11,12 @@ import AgentPeek from './AgentPeek';
 import LessonArtifact from './LessonArtifact';
 import TrainingProgress from './TrainingProgress';
 import LearnedArtifact from './LearnedArtifact';
+import type { Curriculum } from './environmentModel';
 import ProofDrawer, { type ProofContext } from './ProofDrawer';
 import TechnicalDetails from './TechnicalDetails';
 
 export type LessonCommand = 'confirm' | 'dismiss' | 'train' | 'proof';
-export default function GradientLayer({ model: m, dispatch, command, inspect, connectionDetails, proofContext, activity }: { model: GradientModel; dispatch: Dispatch<Action>; command: (action: LessonCommand) => void; inspect: (runId: string) => Promise<void>; connectionDetails?: ReactNode; proofContext?: ProofContext; activity?: ReactNode }) {
+export default function GradientLayer({ model: m, dispatch, command, inspect, connectionDetails, proofContext, activity, curriculum, onAnchor, nextBeat }: { model: GradientModel; dispatch: Dispatch<Action>; command: (action: LessonCommand) => void; inspect: (runId: string) => Promise<void>; connectionDetails?: ReactNode; proofContext?: ProofContext; activity?: ReactNode; curriculum?: Curriculum; onAnchor?: (event: MouseEvent) => boolean | void; nextBeat?: { label: string; onNext: () => void } }) {
   const root = useRef<HTMLDivElement>(null);
   const agents = !activity && (m.stage === 'observer_working' || m.stage === 'builder_working');
   const panelStage = m.stage === 'lesson_open' || ['lesson_ready', 'training', 'learned'].includes(m.stage);
@@ -33,8 +34,8 @@ export default function GradientLayer({ model: m, dispatch, command, inspect, co
   }}>
     <div className="gradient-status" role="status" aria-live="polite">{m.stage.replaceAll('_', ' ')}</div>
     <AnimatePresence>
-      {m.peek && !activity && <motion.div key="peek" className="peek-surface" variants={surface} initial="hidden" animate="visible" exit="hidden">
-        {m.peek === 'details' ? <TechnicalDetails events={m.events} artifacts={m.artifacts} runId={m.runId} close={closePeek}>{connectionDetails}</TechnicalDetails> : <AgentPeek role={m.peek} title={m.title} complete={m.tasks.length} total={m.totalTasks} done={m.stage === 'builder_working'} details={details} close={closePeek} />}
+        {m.peek && !activity && <motion.div key="peek" className="peek-surface" variants={surface} initial="hidden" animate="visible" exit="hidden">
+        {m.peek === 'details' ? <TechnicalDetails events={m.events} artifacts={m.artifacts} runId={m.runId} close={closePeek}>{connectionDetails}</TechnicalDetails> : <AgentPeek role={m.peek} title={m.title} complete={m.tasks.length} total={m.totalTasks} done={m.stage === 'builder_working'} curriculum={curriculum} details={details} close={closePeek} />}
       </motion.div>}
     </AnimatePresence>
     <motion.div layout transition={springSoft} className={`gradient-object ${panel || activity ? 'expanded' : ''}`}>
@@ -50,7 +51,8 @@ export default function GradientLayer({ model: m, dispatch, command, inspect, co
         {m.stage === 'lesson_candidate' && !activity && <motion.div key="nudge" variants={surface} initial="hidden" animate="visible" exit="hidden"><LessonNudge open={() => dispatch({ type: 'open' })} /></motion.div>}
         {!panel && !agents && !activity && m.stage !== 'lesson_candidate' && <motion.span key="origin" layoutId="gradient-surface" className="anchor-origin" aria-hidden="true" />}
       </AnimatePresence>
-      <GradientAnchor state={m.error ? 'attention' : m.stage === 'lesson_candidate' ? 'noticing' : agents ? 'working' : 'idle'} expanded={panel || !!m.peek} onClick={() => m.stage === 'lesson_candidate' ? dispatch({ type: 'open' }) : panelStage ? dispatch({ type: 'toggle_disclosure' }) : m.peek ? closePeek() : details()} />
+      {nextBeat && !activity && <button className="lesson-nudge" onClick={nextBeat.onNext}>{nextBeat.label}</button>}
+      <GradientAnchor state={m.error ? 'attention' : m.stage === 'lesson_candidate' ? 'noticing' : agents ? 'working' : 'idle'} expanded={panel || !!m.peek} onClick={() => m.stage === 'lesson_candidate' ? dispatch({ type: 'open' }) : panelStage ? dispatch({ type: 'toggle_disclosure' }) : m.peek ? closePeek() : details()} onAnchor={onAnchor} />
     </motion.div>
     {m.error && m.stage !== 'proof' && <div className="gradient-error" role="alert"><p>Gradient needs attention.</p><details><summary>View details</summary><p>{m.error}</p></details><button className="text-button" onClick={() => dispatch({ type: 'clear_error' })}>Dismiss</button></div>}
     <AnimatePresence>{m.stage === 'proof' && <ProofDrawer key="proof" results={m.comparison} error={m.error} context={proofContext} close={() => { dispatch({ type: 'close_proof' }); root.current?.querySelector<HTMLButtonElement>('.gradient-anchor')?.focus(); }} />}</AnimatePresence>

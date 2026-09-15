@@ -3,21 +3,22 @@ import { gradientReducer, initialGradient } from '../state/gradientMachine';
 import useGradientEvents, { request } from '../state/useGradientEvents';
 import GradientLayer from './GradientLayer';
 import DemoCompanion, { type DemoSnapshot } from './DemoCompanion';
-import ModeControls from './ModeControls';
 import LessonContext, { type ConversationContext } from './LessonContext';
 import '../styles/desktop.css';
 
 type Connection = { session_id: string | null; connected: boolean; error?: string; last_message_at?: string };
 declare global {
   interface Window {
-    gradientDesktop?: { pointer: (interactive: boolean) => void; proof: (expanded: boolean) => void; menu: () => void; mode: (mode: 'live' | 'experiment' | 'fallback') => void; onTeach: (callback: () => void) => () => void; onMode: (callback: (mode: 'live' | 'experiment' | 'fallback') => void) => () => void; demoSnapshot: () => Promise<DemoSnapshot> };
+    gradientDesktop?: { pointer: (interactive: boolean) => void; proof: (expanded: boolean) => void; menu: () => void; mode: (mode: 'live' | 'demo') => void; getMode: () => Promise<string>; demoType?: () => void; demoAbort?: () => void; onTeach: (callback: () => void) => () => void; onDemoReset: (callback: () => void) => () => void; onMode: (callback: (mode: 'live' | 'demo') => void) => () => void; demoSnapshot: () => Promise<DemoSnapshot> };
   }
 }
 
 export default function DesktopCompanion() {
   const [model, dispatch] = useReducer(gradientReducer, initialGradient);
-  const [mode, setMode] = useState<'live' | 'experiment' | 'fallback'>('live');
-  useEffect(() => window.gradientDesktop?.onMode((value) => { setMode(value); setNotice(undefined); setObservation(undefined); setBusy(false); requesting.current = false; generation.current++; }), []);
+  const [mode, setMode] = useState<'live' | 'demo'>('live');
+  useEffect(() => window.gradientDesktop?.onMode((value) => { setMode(value === 'live' ? 'live' : 'demo'); setNotice(undefined); setObservation(undefined); setBusy(false); requesting.current = false; generation.current++; }), []);
+  // The main process owns the mode; a renderer reload must restore demo instead of dropping to live.
+  useEffect(() => { window.gradientDesktop?.getMode?.().then((value) => { if (value !== 'live') setMode('demo'); }).catch(() => {}); }, []);
   const [connection, setConnection] = useState<Connection>({ session_id: null, connected: false });
   const live = useGradientEvents(dispatch, mode !== 'live', connection.session_id || '');
   const [observation, setObservation] = useState<string>();
@@ -96,11 +97,10 @@ export default function DesktopCompanion() {
     return () => { observer.disconnect(); document.removeEventListener('mousemove', pointer); document.removeEventListener('mouseleave', leave); };
   }, []);
 
-  if (mode !== 'live') return <DemoCompanion key={mode} mode={mode} />;
+  if (mode === 'demo') return <DemoCompanion key="demo" />;
   return <main className="desktop-companion" aria-label="Gradient desktop companion" onContextMenu={(event) => { event.preventDefault(); window.gradientDesktop?.menu(); }}>
-    <ModeControls mode={mode} />
     <GradientLayer model={{ ...model, error: model.error || connection.error || live.error }} dispatch={dispatch}
-      activity={notice ? <div className="manual-observation"><p role="status">{notice}</p>{busy && <LessonContext context={context} reading />}{!busy && <div className="actions"><button className="text-button" onClick={() => setNotice(undefined)}>Dismiss</button><button className="text-button" onClick={() => window.gradientDesktop?.mode('fallback')}>Open saved lesson</button></div>}</div> : undefined}
+      activity={notice ? <div className="manual-observation"><p role="status">{notice}</p>{busy && <LessonContext context={context} reading />}{!busy && <div className="actions"><button className="text-button" onClick={() => setNotice(undefined)}>Dismiss</button><button className="text-button" onClick={() => window.gradientDesktop?.mode('demo')}>Open demo</button></div>}</div> : undefined}
       command={(action) => void live.command(action, model)} inspect={live.inspect}
       connectionDetails={<div className="native-connection">
         <p>{connection.connected ? 'Watching this Codex task' : 'No Codex task connected'}</p>
