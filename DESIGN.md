@@ -1,5 +1,28 @@
 # Gradient Frontend Design Specification
 
+59. DESIGN PHILOSOPHY — LOCKED
+
+
+Gradient should feel calm, expressive, and intentional — never like a generic AI dashboard.
+
+• Objects, not dashboards. Show meaningful things directly: agents, lessons, environments, proofs.
+• Hierarchy before completeness. The important meaning should be obvious before technical detail.
+• Progressive disclosure. Reveal deeper information only when the user investigates.
+• Semantic zoom. Going deeper should change the representation, not just add more text.
+• Structured information over prose. Prefer spatial / grouped representations when the information has structure.
+• Direct manipulation. Let users interact with the object itself instead of surrounding it with generic controls.
+• State through the object. Use sprite posture, eyes, subtle bounce, pulse, glow, or quiet surface changes instead of persistent status chrome.
+• Low interaction cost. Minimize reading, scrolling, remembering, navigation, and unnecessary decisions.
+• Visual restraint. Prefer typography, spacing, alignment, and subtle hairlines over nested cards, gradients, large shadows, or decorative “AI” effects.
+• Design around the user’s mental model, not the backend schema.
+
+Micro-motion is welcome when it adds personality or communicates state. Keep it subtle, fast, and localized.
+
+Canonical rule:
+
+“Show the meaning first. Let the implementation appear only when the user asks for it.”
+
+
 60. DEFAULT CODEX EXPERIENCE
 
 
@@ -157,60 +180,50 @@ Do not use a large orchestration graph.
 64. AGENT STATUS HIERARCHY
 
 
-Use progressive disclosure.
+Use progressive disclosure and semantic zoom.
 
 
 Level 1 — AMBIENT
 
-
-Tiny avatars only.
-
+Presence and state only.
 
 Example:
 [ Observer ◌ ] [ Builder ○ ]
 
 
-The user can understand that work is happening peripherally.
+Level 2 — PREVIEW
 
-
-Level 2 — PEEK
-
-
-Click or hover an avatar.
-
+Show what is happening or what was produced.
 
 Observer:
 “Understanding what you taught”
-
-
-Then:
-“What you taught:
-Observable Effect vs Simulation”
-
 
 Environment Builder:
 “Creating executable lessons”
 
 
-Then:
-“8 train · 4 unseen”
+Level 3 — EXPLORE
+
+Reveal the meaningful structure of the artifact: capabilities, environments, evidence, or other objects the user can recognize and select.
 
 
-Level 3 — INSPECT
+Level 4 — INSPECT
+
+Explain one selected object: what it means, why it exists, and what it is teaching or proving.
 
 
-Optional:
-“View details →”
+Level 5 — SPECIFICATION / EVIDENCE
 
-
-This can reveal:
+Reveal raw implementation detail only on demand:
 • TaskSpecs,
-• generated environments,
 • verifier details,
 • raw agent outputs,
 • hashes,
-• provenance.
+• provenance,
+• rollout traces.
 
+
+Each level should answer a different user question. Deeper levels should not merely become longer versions of the previous one.
 
 Technical detail should always be available, but never dominate the default experience.
 
@@ -443,11 +456,7 @@ The client should visually feel like a minimal Codex developer console:
 • tiny Gradient control in the bottom-right.
 
 
-Use:
-• FastAPI backend,
-• WebSocket event stream,
-• lightweight HTML/CSS/JS frontend.
-
+Use the real backend event stream and keep the client thin and purpose-built.
 
 The UI is a client over the real Codex runtime, not a fake imitation of agent behavior.
 
@@ -480,7 +489,7 @@ This is the strongest UI expression of the Agents Everywhere theme for Gradient
 This section supersedes the earlier preference for a vanilla HTML/JS frontend.
 
 
-Because Gradient now depends on shared-layout transitions, avatar state motion, spawn/collapse animation, progressive disclosure, and a proof drawer, the preferred frontend stack is:
+Because Gradient needs persistent interactive state, progressive disclosure, semantic zoom, transient overlays, expressive sprites, and a real backend event stream, the preferred frontend stack is:
 
 
 • React
@@ -936,6 +945,8 @@ These values may be tuned during visual QA, but Astra must not invent independen
 78. MOTION TOKENS — LOCKED
 
 
+Motion is restrained but expressive. Use it to communicate personality, lifecycle, attention, origin, or spatial continuity — never to decorate every transition.
+
 Centralize spring definitions.
 
 
@@ -1112,8 +1123,12 @@ Study the references for:
 • shared visual grammar,
 • expressive eyes,
 • silhouette variation,
-• progressive disclosure,
-• smooth motion.
+• state communicated through the object,
+• progressive disclosure and semantic zoom,
+• structured information instead of narrated prose,
+• peripheral reassurance instead of constant supervision,
+• removing controls / metadata that make the user manage the system,
+• smooth, restrained motion.
 
 
 Do not reproduce copyrighted character assets or exact silhouettes.
@@ -1165,7 +1180,7 @@ Astra should treat these as acceptance tests:
 1. At 100% zoom, the user should see almost no Gradient UI while idle.
 2. Gradient should occupy less than roughly 5% of the viewport until explicitly opened.
 3. No persistent sidebar.
-4. No large surface above roughly 340 px wide until Run Proof.
+4. Before the user intentionally enters an Explore / Inspect state, no Gradient surface should exceed roughly 340 px. Larger temporary surfaces are allowed when the user explicitly investigates an artifact and must collapse cleanly back into the ambient object.
 5. Observer and Builder must be visually distinguishable at 32 px without labels.
 6. Spawn animation must visibly originate from GradientAnchor.
 7. Closing/collapse should reverse spatially rather than abruptly disappear.
@@ -1184,6 +1199,10 @@ Astra should treat these as acceptance tests:
    • they created a lesson/curriculum,
    • the lesson became post-training,
    • the trained model behaved differently.
+16. Avoid card-inside-card-inside-card layouts.
+17. Metadata must never visually compete with the object’s meaning.
+18. Avoid large decorative gradients, glows, and shadows; tiny localized sprite glow / pulse is allowed for expressive state.
+19. A deeper disclosure level must reveal a new semantic level, not simply more prose.
 
 
 If the interface feels like a dashboard, redesign it.
@@ -1215,10 +1234,10 @@ Astra’s responsibility is implementation fidelity and polish, not inventing th
 Canonical design instruction:
 
 
-“Do not design screens. Design one persistent object that smoothly changes form as Gradient’s state changes.”
+“Do not design screens. Design meaningful objects that reveal more meaning as the user investigates them.”
 
 
-This is the implementation rule most likely to preserve the ambient product feel.
+Gradient itself remains one persistent peripheral object. Motion should preserve continuity where useful, but semantic clarity is more important than animation.
 
 
 85. DEMO-HARDENED DECISIONS — LOCKED
@@ -1240,29 +1259,26 @@ action” affordances share this slot; the slot never duplicates a
 canonical panel button for the same stage.
 
 
-B. Single home per disclosure
+B. Single home per object and disclosure level
 
 
-Each progressive-disclosure surface owns its content exclusively:
+Each progressive-disclosure surface owns its content exclusively.
 
+Use the same semantic progression across artifacts:
 
-• RL environments → Environment Builder peek only, as a curriculum
-  explorer: compact summary (capability, train required/forbidden and
-  held-out counts, coverage, hard quality gates — never one averaged
-  score), then Explore into family groups organized by task family and
-  boundary side (effect-required beside effect-forbidden so the pair
-  teaches the decision boundary), then per-environment Inspect walking
-  the real loop (initial state → policy → resulting state → verifier →
-  reward) plus calibration and training value where recorded.
-  Function names stay metadata. Held-out environments are first-class
-  frozen objects with freeze metadata and zero training rollouts.
-• Observer learning objective, training run, provenance → Technical details.
-• Training Evidence content → ProofDrawer (Run proof opens it whenever
-  recorded evidence exists; hand-authored reference comparison is the
-  fallback only).
+• Summary → what kind of thing was produced.
+• Explore → the meaningful objects / patterns inside it.
+• Inspect → what one selected object means, why it exists, and why it matters.
+• Specification / Evidence → implementation details, raw contracts, verifier data, provenance, hashes, and traces.
 
+Do not expose implementation structure at the summary level merely because the backend records it.
 
-Never render the same artifact list in two surfaces at once.
+Do not render the same artifact list in two surfaces at once.
+
+When a deeper surface opens, it should feel like the existing object gained depth rather than an unrelated dashboard appearing.
+
+Observer learning objective, training run, and provenance belong in Technical details.
+Training Evidence belongs in ProofDrawer when recorded evidence exists.
 
 
 C. Mode ownership
