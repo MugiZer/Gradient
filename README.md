@@ -1,6 +1,8 @@
 # Gradient
 
-Gradient turns a developer's correction into a typed capability, executable Python tasks, deterministic rewards, and a frozen base-versus-LoRA evaluation.
+Gradient is a headless developer-learning tool that turns a correction from a real coding workflow into a typed capability, executable Python tasks, deterministic rewards, and a frozen base-versus-LoRA evaluation.
+
+The current host integration observes real Codex task transcripts locally. Other IDEs or agent harnesses should integrate through the same adapter boundary rather than through a Gradient-owned editor UI. The Electron app is only the ambient companion/demo surface; Gradient does not ship a mock Codex workspace.
 
 The backend implements the experiment pipeline. Model improvement is **not yet demonstrated**: a configured Qwen inference endpoint and a completed Prime training run are required for that claim.
 
@@ -21,6 +23,24 @@ For Prime inference, set `GRADIENT_INFERENCE_URL=https://api.pinference.ai/api/v
 Evaluation freezes a presence penalty of `2.0` alongside temperature and seed. A live probe showed the previous zero-penalty setting producing repetitive helper functions until its JSON action was truncated; the same request with this penalty produced a complete action. Both base and adapter evaluations use the frozen value.
 
 The server is intended for one local process. Cross-origin requests are rejected. If `GRADIENT_API_TOKEN` is set, HTTP and WebSocket clients must send `Authorization: Bearer <token>`. No authentication credentials enter candidate containers or experiment artifacts.
+
+## Product integration
+
+The product path is host-first and headless:
+
+```text
+real Codex / IDE / agent harness
+        ↓
+host adapter
+        ↓
+Gradient backend
+        ↓
+learning artifacts / training / eval
+```
+
+Today, `gradient/codex/native.py` is the concrete Codex adapter. The Electron companion can visualize and control the flow for the demo, but it is not required by the core tool. The `/worker` and `/interactions` APIs below remain useful as an experiment/debug harness; they are not a replacement coding interface.
+
+See `frontend/DESKTOP.md` for the Electron demo/companion.
 
 ## Experiment flow
 
@@ -90,4 +110,4 @@ The student has a six-turn JSON action loop: read `solution.py`, replace it, che
 
 The compiler covers filesystem replacement, JSON counter updates, and local helper execution, each with execute/simulate modes. Hidden verification checks resulting state and return values. Byte snapshots detect final mutations; the helper marker deters accidental simulation but is not proof against deliberate forgery or execute-and-undo attacks. These are small experiment environments, not an adversarial security benchmark.
 
-No database, broker, agent framework, or optional Ambiguous integration is included. A built frontend is served by the API when `frontend/dist` exists.
+No database, broker, agent framework, or optional Ambiguous integration is included. The built frontend bundle is the Electron renderer. Browser rendering is not a product surface; the Gradient core remains usable headlessly through its backend and host adapter.

@@ -1,5 +1,7 @@
 # Gradient desktop companion
 
+This is Gradient's only UI surface and exists for the ambient companion/demo experience. The actual Gradient tool is headless and attaches to a real developer host through an adapter. Electron must never become a replacement IDE, transcript, or coding-agent shell. Demo mode runs only here.
+
 The desktop mode follows the user's updated direction: a transparent native window fixed at the bottom-right of the primary display, above ordinary app windows. There is no browser tab, duplicate Codex transcript, or composer. Click the 32px sprite for details; lesson candidates, agents, artifacts, and proof reuse the existing Gradient components and nine-stage reducer. Empty pixels pass mouse input to the app below. Right-click the sprite or use the Windows tray icon to show, hide, or quit.
 
 The initial version is anchored, not draggable. The proof drawer temporarily expands across the display; closing it restores the small companion. Display work-area changes reposition the window above the taskbar.

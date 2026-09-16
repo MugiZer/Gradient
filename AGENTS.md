@@ -14,6 +14,9 @@ Applies to the whole repository.
 - Keep agent-to-agent contracts as typed Pydantic models in `gradient/schemas.py`.
 - Keep Codex protocol code in `gradient/codex/`, Prime code in `gradient/training/`, deterministic compilation in `gradient/curriculum/`, and untrusted execution/verification in `gradient/sandbox/`.
 - Verifiers judge observable consequences, not source-code strings. Keep held-out tasks and verifier details outside the student-writable workspace.
+- Gradient's product core is headless. Host UI belongs to the real Codex / IDE / agent harness; adapters provide context to Gradient.
+- `frontend/` is only the Electron companion/demo renderer. Never add a mock Codex workspace, transcript, composer, editor, or browser showcase.
+- Demo mode must run only through Electron. The headless backend and host adapters must not depend on Electron.
 - The frontend displays real backend events; it must not contain experiment or training logic.
 - Ambiguous is optional and must never block the core pipeline.
 

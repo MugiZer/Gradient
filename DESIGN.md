@@ -23,33 +23,25 @@ Canonical rule:
 “Show the meaning first. Let the implementation appear only when the user asks for it.”
 
 
-60. DEFAULT CODEX EXPERIENCE
+60. HOST WORKSPACE BOUNDARY — LOCKED
 
 
-The screen should still feel like Codex.
+Gradient does not render the developer's coding workspace.
 
+The primary surface is the real host the developer is already using: Codex today, or another IDE / agent harness through an adapter.
 
-Example:
+Gradient is headless at the product core. It observes host context, produces learning artifacts, runs training / evaluation infrastructure, and exposes events and actions. It does not own:
+• the editor,
+• the coding-agent transcript,
+• the composer,
+• tool-output chrome,
+• a fake Codex shell.
 
-
-┌─────────────────────────────────────────────────────────────┐
-│ CODEX                                                       │
-│                                                             │
-│ > Add a regression test proving another process can read... │
-│                                                             │
-│ Codex                                                       │
-│ [edits repo / runs tests]                                   │
-│                                                             │
-│ ❯                                                           │
-│                                                             │
-│                                                     ●●      │
-│                                                  Gradient   │
-└─────────────────────────────────────────────────────────────┘
-
+For the demo, the Electron companion floats above the real host workspace and provides the ambient Gradient interaction.
 
 No permanent agent dashboard.
 No permanent pipeline graph.
-No giant status board.
+No duplicate coding workspace.
 
 
 61. CORRECTION DETECTION UX
@@ -155,14 +147,14 @@ After:
 [ Observer ]   [ Environment Builder ]
 
 
-Do not show the Codex Worker as a separate Gradient tab.
-Codex is already visibly present as the active Worker Agent.
+Do not show the host coding agent as a separate Gradient tab.
+The real coding agent is already visible in its own host workspace.
 
 
 The three-agent system is therefore:
 
 
-1. Codex Worker — visible in the main coding surface.
+1. Host coding agent / Worker — visible in the real Codex, IDE, or harness surface.
 2. Gradient Observer — spawned in the small tray.
 3. Gradient Environment Builder — spawned in the small tray.
 
@@ -358,7 +350,7 @@ Base        Gradient
 [ Run proof ]
 
 
-The user remains in the Codex workflow.
+The user remains in the real host workflow.
 
 
 Gradient never becomes a destination they have to navigate to.
@@ -390,7 +382,7 @@ Canonical layout:
 └────────────────────────────────────────────────────────────┘
 
 
-Then close the overlay and return immediately to Codex.
+Then close the overlay and return immediately to the host workflow.
 
 
 This preserves the ambient product philosophy while giving the result enough visual weight.
@@ -426,39 +418,34 @@ The user is only brought back for meaningful decisions:
 • Run proof.
 
 
-71. UI IMPLEMENTATION STRATEGY
+71. PRODUCT ARCHITECTURE BOUNDARY — LOCKED
 
 
-Do not try to inject a graphical widget into the stock terminal interface.
-
-
-Use the real Codex runtime / app-server as the backend and build a very thin custom client.
-
+Gradient is a headless developer tool with host adapters.
 
 Architecture:
 
 
-codex app-server
+real Codex / IDE / agent harness
         │
-        ├── Codex conversation/events
-        └── Gradient agent state
+        │ host adapter: conversation, diffs, tool/runtime context
+        ▼
+   Gradient backend
+        │
+        ├── Observer / Environment Builder
+        ├── deterministic compiler + sandbox
+        ├── training / evaluation
+        └── events + artifacts
                 │
                 ▼
-         Gradient Client UI
+      optional Electron companion
 
 
-The client should visually feel like a minimal Codex developer console:
-• dark background,
-• monospace conversation,
-• compact tool actions,
-• diff summaries,
-• message composer,
-• tiny Gradient control in the bottom-right.
+The host adapter is responsible for obtaining developer context. Gradient should not recreate the host interface.
 
+The Electron app is the demo and ambient companion surface. It visualizes Gradient state and lets the user inspect / confirm actions, but the headless core must work without Electron.
 
-Use the real backend event stream and keep the client thin and purpose-built.
-
-The UI is a client over the real Codex runtime, not a fake imitation of agent behavior.
+Codex is the current concrete integration. Future IDE or harness integrations should implement the same boundary rather than requiring a new Gradient UI.
 
 
 72. FINAL UI PRODUCT PRINCIPLE
@@ -467,7 +454,7 @@ The UI is a client over the real Codex runtime, not a fake imitation of agent be
 The final product should feel like:
 
 
-“You are using Codex normally.
+“You are using your coding agent normally.
 Gradient notices when you teach it something.
 You click Teach lesson.
 Small agents quietly appear, do the work, then disappear into a learned capability.”
@@ -483,14 +470,12 @@ Gradient comes alive inside the place where you are already teaching an agent.�
 This is the strongest UI expression of the Agents Everywhere theme for Gradient
 
 
-73. FRONTEND IMPLEMENTATION SPEC — LOCKED
+73. ELECTRON RENDERER IMPLEMENTATION SPEC — LOCKED
 
 
-This section supersedes the earlier preference for a vanilla HTML/JS frontend.
+The only Gradient UI surface is the Electron companion / demo renderer. It is not an IDE shell and must never grow a mock transcript, composer, editor, or file browser.
 
-
-Because Gradient needs persistent interactive state, progressive disclosure, semantic zoom, transient overlays, expressive sprites, and a real backend event stream, the preferred frontend stack is:
-
+The renderer uses:
 
 • React
 • Vite
@@ -500,7 +485,6 @@ Because Gradient needs persistent interactive state, progressive disclosure, sem
 • Lucide only for utility icons
 • custom inline SVG for Gradient characters
 
-
 Avoid:
 • Next.js,
 • Redux,
@@ -509,8 +493,7 @@ Avoid:
 • shadcn as the primary visual language,
 • generic SaaS dashboard components.
 
-
-The frontend should remain small and purpose-built.
+The renderer should remain small and purpose-built. Demo mode runs only inside Electron.
 
 
 74. EXACT COMPONENT TREE — LOCKED
@@ -520,46 +503,26 @@ Canonical React component hierarchy:
 
 
 <App>
-└── <CodexWorkspace>
-    ├── <CodexTranscript>
-    │   ├── <UserTurn />
-    │   ├── <AgentTurn />
-    │   ├── <ToolAction />
-    │   └── <DiffPreview />
-    │
-    ├── <Composer />
+└── <DesktopCompanion>
+    ├── <DemoCompanion />          // Electron demo mode only
     │
     └── <GradientLayer>
         ├── <GradientAnchor />
         │   └── <AgentSprite role="gradient" />
-        │
         ├── <LessonNudge />
-        │
         ├── <LessonPopover />
-        │   ├── <LessonSummary />
-        │   └── <TeachLessonButton />
-        │
         ├── <AgentTray />
         │   ├── <AgentSprite role="observer" />
         │   └── <AgentSprite role="builder" />
-        │
         ├── <AgentPeek />
-        │
         ├── <LessonArtifact />
-        │
         ├── <TrainingProgress />
-        │
         ├── <LearnedArtifact />
-        │
         ├── <ProofDrawer />
-        │   ├── <BaseResult />
-        │   ├── <TrainedResult />
-        │   └── <ProofFooter />
-        │
         └── <TechnicalDetails />
 
 
-Astra should implement this structure directly rather than inventing a new frontend architecture.
+There is no CodexWorkspace, transcript, composer, editor shell, or browser showcase in Gradient.
 
 
 75. COMPONENT CONTRACTS
@@ -829,17 +792,17 @@ This is the only large Gradient surface.
 
 
 frontend/
+├── desktop/
+│   ├── main.cjs
+│   ├── preload.cjs
+│   └── bridge.cjs
+│
 ├── src/
 │   ├── App.tsx
-│   │
-│   ├── codex/
-│   │   ├── CodexWorkspace.tsx
-│   │   ├── CodexTranscript.tsx
-│   │   ├── Composer.tsx
-│   │   ├── ToolAction.tsx
-│   │   └── DiffPreview.tsx
-│   │
+│   ├── main.tsx
 │   ├── gradient/
+│   │   ├── DesktopCompanion.tsx
+│   │   ├── DemoCompanion.tsx
 │   │   ├── GradientLayer.tsx
 │   │   ├── GradientAnchor.tsx
 │   │   ├── AgentSprite.tsx
@@ -852,47 +815,19 @@ frontend/
 │   │   ├── LearnedArtifact.tsx
 │   │   ├── ProofDrawer.tsx
 │   │   └── TechnicalDetails.tsx
-│   │
 │   ├── state/
-│   │   ├── gradientMachine.ts
-│   │   └── useGradientEvents.ts
-│   │
 │   ├── motion/
-│   │   ├── springs.ts
-│   │   └── variants.ts
-│   │
 │   └── styles/
 │       ├── tokens.css
-│       ├── codex.css
-│       └── gradient.css
+│       ├── gradient.css
+│       └── desktop.css
 │
-└── public/
-
-
-Also create:
-
-
-frontend/
 ├── DESIGN_SYSTEM.md
+├── DESKTOP.md
 └── INTERACTION_STATES.md
 
 
-DESIGN_SYSTEM.md:
-• design tokens,
-• sprite rules,
-• spacing,
-• typography,
-• surfaces,
-• borders,
-• motion principles.
-
-
-INTERACTION_STATES.md:
-• state machine,
-• allowed transitions,
-• event mapping,
-• component visibility by state,
-• animation expectations.
+Do not create a frontend/src/codex/ workspace layer. Host-specific observation belongs in backend adapters, not renderer components.
 
 
 77. DESIGN TOKENS
@@ -1137,38 +1072,16 @@ Do not reproduce copyrighted character assets or exact silhouettes.
 The goal is the interaction philosophy and visual clarity, not visual cloning.
 
 
-82. UI STATE SHOWCASE — BUILD BEFORE LIVE WIRING
+82. ELECTRON DEMO SHOWCASE — LOCKED
 
 
-Before connecting the full backend event stream, create a developer-only route:
+The interactive demo / state showcase runs only in the Electron app.
 
+Use Electron Demo mode to traverse staged lesson states and saved evidence without requiring FastAPI. Development controls may exist behind the Electron tray / context menu, but must not become a browser route or a second product shell.
 
-/dev/ui
+Do not restore /dev/ui, a fake Codex workspace, a transcript, or a composer for showcase purposes.
 
-
-It should allow manual traversal of every UI state:
-
-
-[ idle ]
-[ lesson_candidate ]
-[ lesson_open ]
-[ observer_working ]
-[ builder_working ]
-[ lesson_ready ]
-[ training ]
-[ learned ]
-[ proof ]
-
-
-Purpose:
-• visually inspect every state,
-• tune animation,
-• test transitions,
-• verify small-screen behavior,
-• fix motion before debugging backend integration.
-
-
-Only after the state showcase feels right should the frontend be wired to real WebSocket events.
+Live mode observes the real connected host through the backend adapter. Demo mode replays saved artifacts. Neither mode owns the developer's coding surface.
 
 
 83. VISUAL ACCEPTANCE CRITERIA — LOCKED
@@ -1203,6 +1116,9 @@ Astra should treat these as acceptance tests:
 17. Metadata must never visually compete with the object’s meaning.
 18. Avoid large decorative gradients, glows, and shadows; tiny localized sprite glow / pulse is allowed for expressive state.
 19. A deeper disclosure level must reveal a new semantic level, not simply more prose.
+20. Gradient must never render a mock Codex / IDE workspace, transcript, or composer.
+21. Demo mode must run only through the Electron shell.
+22. The headless Gradient core must remain usable without Electron.
 
 
 If the interface feels like a dashboard, redesign it.
@@ -1229,6 +1145,8 @@ Give it:
 
 
 Astra’s responsibility is implementation fidelity and polish, not inventing the design.
+
+Never build or restore a mock coding workspace to demonstrate Gradient. The demo belongs in Electron over the real host surface; the product core is headless.
 
 
 Canonical design instruction:
