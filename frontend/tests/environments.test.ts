@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildCurriculum, familyLabel, isolatesOf, objectiveOf, sideOf,
+  buildCurriculum, familyLabel, isolatesOf, lessonTitleOf, objectiveOf, sideOf, testOf,
   type EnvEvidence, type EnvSpec,
 } from '../src/gradient/environmentModel.ts';
 
@@ -36,7 +36,14 @@ test('decision boundary comes from mode, never from names', () => {
   assert.equal(sideOf('simulate'), 'forbidden');
   assert.equal(sideOf(undefined), 'unspecified');
   assert.equal(familyLabel('json'), 'JSON STATE');
-  assert.equal(objectiveOf('filesystem', 'required'), 'Fresh reader must observe the payload.');
+  assert.equal(objectiveOf('filesystem', 'required'), 'Another process must observe the payload.');
+  assert.equal(lessonTitleOf('filesystem', 'required'), 'Persist for a fresh reader');
+  assert.equal(lessonTitleOf('filesystem', 'forbidden'), 'Preview without mutation');
+  assert.equal(lessonTitleOf('json', 'required'), 'Persist updated state');
+  assert.equal(lessonTitleOf('json', 'forbidden'), 'Compute next state only');
+  assert.equal(lessonTitleOf('subprocess', 'required'), 'Actually run helper');
+  assert.equal(lessonTitleOf('subprocess', 'forbidden'), 'Describe invocation only');
+  assert.ok(testOf('filesystem', 'required').includes('fresh reader'));
 });
 
 test('recorded curriculum groups into paired families with real counts', () => {

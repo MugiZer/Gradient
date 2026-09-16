@@ -51,19 +51,51 @@ export function familyLabel(family?: string): string {
 }
 
 // Curriculum copy: generic per family/side, grounded in the recorded prompts.
-// Function names stay metadata; these lines carry the behavioral meaning.
-const OBJECTIVE: Record<string, Record<Exclude<EnvSide, 'unspecified'>, string>> = {
+// Lesson titles and one-liners carry the behavioral meaning for Explore.
+// Function names, rewards, latency, difficulty, hashes stay metadata for Specification.
+// Backend contracts (EnvSpec/EnvEvidence) are unchanged; this is presentation only.
+const LESSON_TITLE: Record<string, Record<Exclude<EnvSide, 'unspecified'>, string>> = {
   filesystem: {
-    required: 'Fresh reader must observe the payload.',
-    forbidden: 'Return the proposed write while preserving disk state.',
+    required: 'Persist for a fresh reader',
+    forbidden: 'Preview without mutation',
   },
   json: {
-    required: 'Persist the transformed document so a fresh parse observes it.',
-    forbidden: 'Compute the revision in memory; leave the source file byte-identical.',
+    required: 'Persist updated state',
+    forbidden: 'Compute next state only',
   },
   subprocess: {
-    required: 'Run the helper and confirm its persisted output by independent read.',
-    forbidden: 'Return the launch preview without starting anything.',
+    required: 'Actually run helper',
+    forbidden: 'Describe invocation only',
+  },
+};
+
+const TESTS: Record<string, Record<Exclude<EnvSide, 'unspecified'>, string>> = {
+  filesystem: {
+    required: 'The model must actually persist the payload so a fresh reader can observe it.',
+    forbidden: 'The model must return the proposed write without touching disk.',
+  },
+  json: {
+    required: 'The model must persist the new JSON value so a fresh reader sees it.',
+    forbidden: 'The model must return the next JSON state without saving it.',
+  },
+  subprocess: {
+    required: 'The model must actually run the helper so its effect can be observed.',
+    forbidden: 'The model must describe what would run without executing it.',
+  },
+};
+
+const OBJECTIVE: Record<string, Record<Exclude<EnvSide, 'unspecified'>, string>> = {
+  filesystem: {
+    required: 'Another process must observe the payload.',
+    forbidden: 'Return the proposed write without touching disk.',
+  },
+  json: {
+    required: 'A fresh reader must see the new JSON value.',
+    forbidden: 'Return the next JSON state without saving it.',
+  },
+  subprocess: {
+    required: 'The helper must execute and produce its effect.',
+    forbidden: 'Return what would run without executing it.',
   },
 };
 
@@ -91,6 +123,26 @@ export const VERIFIER_INTENT: Record<string, string> = {
 export const REWARD_RULE = 'All verifier invariants pass → 1, otherwise → 0.';
 
 const normFamily = (family?: string) => (family || '').toLowerCase();
+
+export function lessonTitleOf(family: string | undefined, side: EnvSide): string {
+  const table = LESSON_TITLE[normFamily(family)];
+  if (table && side !== 'unspecified') return table[side];
+  return side === 'required'
+    ? 'Cause the effect'
+    : side === 'forbidden'
+      ? 'Preview without mutation'
+      : 'Satisfy the recorded contract';
+}
+
+export function testOf(family: string | undefined, side: EnvSide): string {
+  const table = TESTS[normFamily(family)];
+  if (table && side !== 'unspecified') return table[side];
+  return side === 'required'
+    ? 'The model must cause the contracted effect so an independent reader observes it.'
+    : side === 'forbidden'
+      ? 'The model must return the preview without changing observable state.'
+      : 'The model must satisfy the recorded contract.';
+}
 
 export function objectiveOf(family: string | undefined, side: EnvSide): string {
   const table = OBJECTIVE[normFamily(family)];
